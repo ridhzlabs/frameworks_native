@@ -1,0 +1,34 @@
+name: ProducerListener ABI contract
+
+on:
+  push:
+    branches: [cmdr-chara/miuicamera-port-20260910]
+  pull_request:
+    branches: [lineage-23.2]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Reject whitespace errors
+        run: git diff --check HEAD^ HEAD
+      - name: Verify the restored vendor ABI declaration and definition
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          header = Path("libs/gui/include/gui/IProducerListener.h").read_text()
+          source = Path("libs/gui/IProducerListener.cpp").read_text()
+          declaration = "virtual void onBufferDetached(int slot);"
+          definition = "void BnProducerListener::onBufferDetached(int /*slot*/) {"
+          assert header.count(declaration) == 1, "missing or duplicate ABI declaration"
+          assert source.count(definition) == 1, "missing or duplicate out-of-line ABI definition"
+          PY
